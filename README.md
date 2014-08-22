@@ -40,7 +40,7 @@ This library is used in the Taipei Torrent BitTorrent client http://github.com/j
 Complete documentation
 ----------------------
 
-    http://godoc.org/code.google.com/p/go-nat-pmp
+    http://godoc.org/github.com/jackpal/go-nat-pmp
 
 License
 -------
