@@ -2,8 +2,6 @@ package natpmp
 
 import (
 	"fmt"
-	"github.com/jackpal/gateway"
-	"log"
 	"net"
 	"time"
 )
@@ -20,32 +18,18 @@ import (
 
 const nAT_PMP_PORT = 5351
 
-const nAT_TRIES = 9
-
-const nAT_INITIAL_MS = 250
-
 // The recommended mapping lifetime for AddPortMapping
 const RECOMMENDED_MAPPING_LIFETIME_SECONDS = 3600
 
 // Client is a NAT-PMP protocol client.
 type Client struct {
 	gateway net.IP
+	timeout time.Duration
 }
 
 // Create a NAT-PMP client for the NAT-PMP server at the gateway.
-func NewClient(gateway net.IP) (nat *Client) {
-	return &Client{gateway}
-}
-
-// Create a NAT-PMP client for the NAT-PMP server at the default gateway.
-func NewClientForDefaultGateway() (nat *Client, err error) {
-	var g net.IP
-	g, err = gateway.DiscoverGateway()
-	if err != nil {
-		return
-	}
-	nat = NewClient(g)
-	return
+func NewClient(gateway net.IP, timeout time.Duration) (nat *Client) {
+	return &Client{gateway, timeout}
 }
 
 // Results of the NAT-PMP GetExternalAddress operation
@@ -118,36 +102,31 @@ func (n *Client) rpc(msg []byte, resultSize int) (result []byte, err error) {
 
 	result = make([]byte, resultSize)
 
-	needNewDeadline := true
+	timeout := time.Now().Add(n.timeout)
 
-	var tries uint
-	for tries = 0; tries < nAT_TRIES; {
-		if needNewDeadline {
-			err = conn.SetDeadline(time.Now().Add((nAT_INITIAL_MS << tries) * time.Millisecond))
-			if err != nil {
-				return
-			}
-			needNewDeadline = false
-		}
+	err = conn.SetDeadline(timeout)
+	if err != nil {
+		return
+	}
+
+	var bytesRead int
+	var remoteAddr *net.UDPAddr
+	for time.Now().Before(timeout) {
 		_, err = conn.Write(msg)
 		if err != nil {
 			return
 		}
-		var bytesRead int
-		var remoteAddr *net.UDPAddr
+
 		bytesRead, remoteAddr, err = conn.ReadFromUDP(result)
 		if err != nil {
 			if err.(net.Error).Timeout() {
-				tries++
-				needNewDeadline = true
 				continue
 			}
 			return
 		}
+
 		if !remoteAddr.IP.Equal(n.gateway) {
-			log.Printf("Ignoring packet because IPs differ:", remoteAddr, n.gateway)
 			// Ignore this packet.
-			// Continue without increasing retransmission timeout or deadline.
 			continue
 		}
 		if bytesRead != resultSize {
@@ -171,6 +150,7 @@ func (n *Client) rpc(msg []byte, resultSize int) (result []byte, err error) {
 		// If we got here the RPC is good.
 		return
 	}
+
 	err = fmt.Errorf("Timed out trying to contact gateway")
 	return
 }
