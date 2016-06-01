@@ -8,6 +8,9 @@ NAT-PMP is supported by Apple brand routers and open source routers like Tomato 
 
 See http://tools.ietf.org/html/draft-cheshire-nat-pmp-03
 
+
+[![Build Status](https://travis-ci.org/jackpal/go-nat-pmp.svg)](https://travis-ci.org/jackpal/go-nat-pmp)
+
 Get the package
 ---------------
 
