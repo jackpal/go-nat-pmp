@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 )
 
 type callRecord struct {
@@ -19,7 +20,7 @@ type mockNetwork struct {
 	cr callRecord
 }
 
-func (n *mockNetwork) call(msg []byte) (result []byte, err error) {
+func (n *mockNetwork) call(msg []byte, timeout time.Duration) (result []byte, err error) {
 	if bytes.Compare(msg, n.cr.msg) != 0 {
 		n.t.Errorf("msg=%v, expected %v", msg, n.cr.msg)
 	}
@@ -78,7 +79,7 @@ func TestGetExternalAddress(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		t.Logf("case %d", i)
-		c := Client{&mockNetwork{t, testCase.cr}}
+		c := Client{&mockNetwork{t, testCase.cr}, 0}
 		result, err := c.GetExternalAddress()
 		if err != nil {
 			if err != testCase.err {
@@ -163,7 +164,7 @@ func TestAddPortMapping(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Logf("case %d", i)
-		c := Client{&mockNetwork{t, testCase.cr}}
+		c := Client{&mockNetwork{t, testCase.cr}, 0}
 		result, err := c.AddPortMapping(testCase.protocol, testCase.internalPort, testCase.requestedExternalPort, testCase.lifetime)
 		if err != nil || testCase.err != nil {
 			if err != testCase.err && fmt.Sprintf("%v", err) != fmt.Sprintf("%v", testCase.err) {
@@ -235,7 +236,7 @@ func TestProtocolChecks(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		t.Logf("case %d", i)
-		c := Client{&mockNetwork{t, testCase.cr}}
+		c := Client{&mockNetwork{t, testCase.cr}, 0}
 		result, err := c.AddPortMapping(testCase.protocol, testCase.internalPort, testCase.requestedExternalPort, testCase.lifetime)
 		if err != testCase.err && fmt.Sprintf("%v", err) != fmt.Sprintf("%v", testCase.err) {
 			t.Errorf("err=%v != %v", err, testCase.err)
