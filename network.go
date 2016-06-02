@@ -2,7 +2,6 @@ package natpmp
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"time"
 )
@@ -56,7 +55,6 @@ func (n *network) call(msg []byte) (result []byte, err error) {
 			return
 		}
 		if !remoteAddr.IP.Equal(n.gateway) {
-			log.Printf("Ignoring packet because IPs differ:", remoteAddr, n.gateway)
 			// Ignore this packet.
 			// Continue without increasing retransmission timeout or deadline.
 			continue
