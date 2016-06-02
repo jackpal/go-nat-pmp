@@ -2,10 +2,7 @@ package natpmp
 
 import (
 	"fmt"
-	"github.com/jackpal/gateway"
-	"log"
 	"net"
-	"time"
 )
 
 // Implement the NAT-PMP protocol, typically supported by Apple routers and open source
@@ -18,37 +15,25 @@ import (
 //    client := natpmp.NewClient(gatewayIP)
 //    response, err := client.GetExternalAddress()
 
-const nAT_PMP_PORT = 5351
-
-const nAT_TRIES = 9
-
-const nAT_INITIAL_MS = 250
-
 // The recommended mapping lifetime for AddPortMapping
 const RECOMMENDED_MAPPING_LIFETIME_SECONDS = 3600
 
+// Interface used to make remote procedure calls.
+type caller interface {
+	call(msg []byte) (result []byte, err error)
+}
+
 // Client is a NAT-PMP protocol client.
 type Client struct {
-	gateway net.IP
+	caller caller
 }
 
 // Create a NAT-PMP client for the NAT-PMP server at the gateway.
 func NewClient(gateway net.IP) (nat *Client) {
-	return &Client{gateway}
+	return &Client{&network{gateway}}
 }
 
-// Create a NAT-PMP client for the NAT-PMP server at the default gateway.
-func NewClientForDefaultGateway() (nat *Client, err error) {
-	var g net.IP
-	g, err = gateway.DiscoverGateway()
-	if err != nil {
-		return
-	}
-	nat = NewClient(g)
-	return
-}
-
-// Results of the NAT-PMP GetExternalAddress operation
+// Results of the NAT-PMP GetExternalAddress operation.
 type GetExternalAddressResult struct {
 	SecondsSinceStartOfEpoc uint32
 	ExternalIPAddress       [4]byte
@@ -107,71 +92,34 @@ func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternal
 }
 
 func (n *Client) rpc(msg []byte, resultSize int) (result []byte, err error) {
-	var server net.UDPAddr
-	server.IP = n.gateway
-	server.Port = nAT_PMP_PORT
-	conn, err := net.DialUDP("udp", nil, &server)
+	result, err = n.caller.call(msg)
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	err = protocolChecks(msg, resultSize, result)
+	return
+}
 
-	result = make([]byte, resultSize)
-
-	needNewDeadline := true
-
-	var tries uint
-	for tries = 0; tries < nAT_TRIES; {
-		if needNewDeadline {
-			err = conn.SetDeadline(time.Now().Add((nAT_INITIAL_MS << tries) * time.Millisecond))
-			if err != nil {
-				return
-			}
-			needNewDeadline = false
-		}
-		_, err = conn.Write(msg)
-		if err != nil {
-			return
-		}
-		var bytesRead int
-		var remoteAddr *net.UDPAddr
-		bytesRead, remoteAddr, err = conn.ReadFromUDP(result)
-		if err != nil {
-			if err.(net.Error).Timeout() {
-				tries++
-				needNewDeadline = true
-				continue
-			}
-			return
-		}
-		if !remoteAddr.IP.Equal(n.gateway) {
-			log.Printf("Ignoring packet because IPs differ:", remoteAddr, n.gateway)
-			// Ignore this packet.
-			// Continue without increasing retransmission timeout or deadline.
-			continue
-		}
-		if bytesRead != resultSize {
-			err = fmt.Errorf("unexpected result size %d, expected %d", bytesRead, resultSize)
-			return
-		}
-		if result[0] != 0 {
-			err = fmt.Errorf("unknown protocol version %d", result[0])
-			return
-		}
-		expectedOp := msg[1] | 0x80
-		if result[1] != expectedOp {
-			err = fmt.Errorf("Unexpected opcode %d. Expected %d", result[1], expectedOp)
-			return
-		}
-		resultCode := readNetworkOrderUint16(result[2:4])
-		if resultCode != 0 {
-			err = fmt.Errorf("Non-zero result code %d", resultCode)
-			return
-		}
-		// If we got here the RPC is good.
+func protocolChecks(msg []byte, resultSize int, result []byte) (err error) {
+	if len(result) != resultSize {
+		err = fmt.Errorf("unexpected result size %d, expected %d", len(result), resultSize)
 		return
 	}
-	err = fmt.Errorf("Timed out trying to contact gateway")
+	if result[0] != 0 {
+		err = fmt.Errorf("unknown protocol version %d", result[0])
+		return
+	}
+	expectedOp := msg[1] | 0x80
+	if result[1] != expectedOp {
+		err = fmt.Errorf("Unexpected opcode %d. Expected %d", result[1], expectedOp)
+		return
+	}
+	resultCode := readNetworkOrderUint16(result[2:4])
+	if resultCode != 0 {
+		err = fmt.Errorf("Non-zero result code %d", resultCode)
+		return
+	}
+	// If we got here the RPC is good.
 	return
 }
 
