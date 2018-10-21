@@ -49,6 +49,8 @@ type GetExternalAddressResult struct {
 }
 
 // Get the external address of the router.
+//
+// Note that this call can take up to 128 seconds to return.
 func (n *Client) GetExternalAddress() (result *GetExternalAddressResult, err error) {
 	msg := make([]byte, 2)
 	msg[0] = 0 // Version 0
@@ -71,7 +73,8 @@ type AddPortMappingResult struct {
 	PortMappingLifetimeInSeconds uint32
 }
 
-// Add (or delete) a port mapping. To delete a mapping, set the requestedExternalPort and lifetime to 0
+// Add (or delete) a port mapping. To delete a mapping, set the requestedExternalPort and lifetime to 0.
+// Note that this call can take up to 128 seconds to return.
 func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternalPort int, lifetime int) (result *AddPortMappingResult, err error) {
 	var opcode byte
 	if protocol == "udp" {
