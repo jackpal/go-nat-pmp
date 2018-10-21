@@ -9,14 +9,14 @@ import (
 // Implement the NAT-PMP protocol, typically supported by Apple routers and open source
 // routers such as DD-WRT and Tomato.
 //
-// See http://tools.ietf.org/html/draft-cheshire-nat-pmp-03
+// See https://tools.ietf.org/rfc/rfc6886.txt
 //
 // Usage:
 //
 //    client := natpmp.NewClient(gatewayIP)
 //    response, err := client.GetExternalAddress()
 
-// The recommended mapping lifetime for AddPortMapping
+// The recommended mapping lifetime for AddPortMapping.
 const RECOMMENDED_MAPPING_LIFETIME_SECONDS = 3600
 
 // Interface used to make remote procedure calls.
@@ -85,6 +85,7 @@ func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternal
 	msg := make([]byte, 12)
 	msg[0] = 0 // Version 0
 	msg[1] = opcode
+	// [2:3] is reserved.
 	writeNetworkOrderUint16(msg[4:6], uint16(internalPort))
 	writeNetworkOrderUint16(msg[6:8], uint16(requestedExternalPort))
 	writeNetworkOrderUint32(msg[8:12], uint32(lifetime))
