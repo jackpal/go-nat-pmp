@@ -20,6 +20,7 @@ Usage
 -----
 
     import (
+        "fmt"
         "github.com/jackpal/gateway"
         natpmp "github.com/jackpal/go-nat-pmp"
     )
@@ -34,7 +35,7 @@ Usage
     if err != nil {
         return
     }
-    print("External IP address:", response.ExternalIPAddress)
+    fmt.Println("External IP address: %v", response.ExternalIPAddress)
 
 Clients
 -------
