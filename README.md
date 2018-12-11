@@ -35,7 +35,7 @@ Usage
     if err != nil {
         return
     }
-    fmt.Println("External IP address: %v", response.ExternalIPAddress)
+    fmt.Printf("External IP address: %v\n", response.ExternalIPAddress)
 
 Clients
 -------
