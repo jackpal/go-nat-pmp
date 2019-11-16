@@ -22,7 +22,7 @@ Usage
 
 Get one more package, used by the example code:
 
-   # Get the go-nat-pmp package.
+    # Get the go-nat-pmp package.
     go get -u github.com/jackpal/go-nat-pmp
  
  Create a directory:
