@@ -14,28 +14,54 @@ See https://tools.ietf.org/rfc/rfc6886.txt
 Get the package
 ---------------
 
+    # Get the go-nat-pmp package.
     go get -u github.com/jackpal/go-nat-pmp
-
+ 
 Usage
 -----
 
+Get one more package, used by the example code:
+
+   # Get the go-nat-pmp package.
+    go get -u github.com/jackpal/go-nat-pmp
+ 
+ Create a directory:
+ 
+    cd ~/go
+    mkdir -p src/hello
+    cd src/hello
+
+Create a file hello.go with these contents:
+
+    package main
+
     import (
         "fmt"
+
         "github.com/jackpal/gateway"
         natpmp "github.com/jackpal/go-nat-pmp"
     )
 
-    gatewayIP, err := gateway.DiscoverGateway()
-    if err != nil {
-        return
+    func main() {
+        gatewayIP, err := gateway.DiscoverGateway()
+        if err != nil {
+            return
+        }
+
+        client := natpmp.NewClient(gatewayIP)
+        response, err := client.GetExternalAddress()
+        if err != nil {
+            return
+        }
+        fmt.Printf("External IP address: %v\n", response.ExternalIPAddress)
     }
 
-    client := natpmp.NewClient(gatewayIP)
-    response, err := client.GetExternalAddress()
-    if err != nil {
-        return
-    }
-    fmt.Println("External IP address: %v", response.ExternalIPAddress)
+Build the example
+
+    go build
+    ./hello
+
+    External IP address: [www xxx yyy zzz]
 
 Clients
 -------
