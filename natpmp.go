@@ -33,13 +33,25 @@ type Client struct {
 // Create a NAT-PMP client for the NAT-PMP server at the gateway.
 // Uses default timeout which is around 128 seconds.
 func NewClient(gateway net.IP) (nat *Client) {
-	return &Client{&network{gateway}, 0}
+	return &Client{&network{gateway, nil}, 0}
+}
+
+// Create a NAT-PMP client for the NAT-PMP server at the gateway with the specified local address.
+// Uses default timeout which is around 128 seconds.
+func NewClientWithLocal(gateway net.IP, local net.IP) (nat *Client) {
+	return &Client{&network{gateway, local}, 0}
 }
 
 // Create a NAT-PMP client for the NAT-PMP server at the gateway, with a timeout.
 // Timeout defines the total amount of time we will keep retrying before giving up.
 func NewClientWithTimeout(gateway net.IP, timeout time.Duration) (nat *Client) {
-	return &Client{&network{gateway}, timeout}
+	return &Client{&network{gateway, nil}, timeout}
+}
+
+// Create a NAT-PMP client for the NAT-PMP server at the gateway, with a timeout.
+// Timeout defines the total amount of time we will keep retrying before giving up.
+func NewClientWithLocalandTimeout(gateway net.IP, local net.IP, timeout time.Duration) (nat *Client) {
+	return &Client{&network{gateway, local}, timeout}
 }
 
 // Results of the NAT-PMP GetExternalAddress operation.
