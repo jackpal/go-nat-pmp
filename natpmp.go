@@ -75,7 +75,7 @@ type AddPortMappingResult struct {
 
 // Add (or delete) a port mapping. To delete a mapping, set the requestedExternalPort and lifetime to 0.
 // Note that this call can take up to 128 seconds to return.
-func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternalPort int, lifetime int) (result *AddPortMappingResult, err error) {
+func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternalPort int, lifetime int64) (result *AddPortMappingResult, err error) {
 	var opcode byte
 	if protocol == "udp" {
 		opcode = 1

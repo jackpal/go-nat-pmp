@@ -100,7 +100,7 @@ type addPortMappingRecord struct {
 	protocol              string
 	internalPort          int
 	requestedExternalPort int
-	lifetime              int
+	lifetime              int64
 	result                *AddPortMappingResult
 	err                   error
 	cr                    callRecord
