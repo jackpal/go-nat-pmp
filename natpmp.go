@@ -114,12 +114,38 @@ func (n *Client) rpc(msg []byte, resultSize int) (result []byte, err error) {
 }
 
 func protocolChecks(msg []byte, resultSize int, result []byte) (err error) {
-	if len(result) != resultSize {
+	if len(result) < 4 {
 		err = fmt.Errorf("unexpected result size %d, expected %d", len(result), resultSize)
 		return
 	}
 	if result[0] != 0 {
-		err = fmt.Errorf("unknown protocol version %d", result[0])
+		if result[0] == 2 {
+			err = fmt.Errorf("unknown protocol version 2 (server responded with PCP / Port Control Protocol)")
+		} else {
+			err = fmt.Errorf("unknown protocol version %d", result[0])
+		}
+		return
+	}
+	resultCode := readNetworkOrderUint16(result[2:4])
+	if resultCode != 0 {
+		var desc string
+		switch resultCode {
+		case 1:
+			desc = "Unsupported Version"
+		case 2:
+			desc = "Not Authorized/Refused"
+		case 3:
+			desc = "Network Failure (box has no DHCP lease or external IP)"
+		case 4:
+			desc = "Out of resources"
+		case 5:
+			desc = "Unsupported opcode"
+		}
+		if desc != "" {
+			err = fmt.Errorf("Non-zero result code %d (%s)", resultCode, desc)
+		} else {
+			err = fmt.Errorf("Non-zero result code %d", resultCode)
+		}
 		return
 	}
 	expectedOp := msg[1] | 0x80
@@ -127,9 +153,8 @@ func protocolChecks(msg []byte, resultSize int, result []byte) (err error) {
 		err = fmt.Errorf("Unexpected opcode %d. Expected %d", result[1], expectedOp)
 		return
 	}
-	resultCode := readNetworkOrderUint16(result[2:4])
-	if resultCode != 0 {
-		err = fmt.Errorf("Non-zero result code %d", resultCode)
+	if len(result) != resultSize {
+		err = fmt.Errorf("unexpected result size %d, expected %d", len(result), resultSize)
 		return
 	}
 	// If we got here the RPC is good.
