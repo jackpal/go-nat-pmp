@@ -38,7 +38,11 @@ func (n *network) call(msg []byte, timeout time.Duration) (result []byte, err er
 	var tries uint
 	for tries = 0; (tries < nAT_TRIES && finalTimeout.IsZero()) || time.Now().Before(finalTimeout); {
 		if needNewDeadline {
-			nextDeadline := time.Now().Add((nAT_INITIAL_MS << tries) * time.Millisecond)
+			shift := tries
+			if shift > 8 {
+				shift = 8
+			}
+			nextDeadline := time.Now().Add((nAT_INITIAL_MS << shift) * time.Millisecond)
 			err = conn.SetDeadline(minTime(nextDeadline, finalTimeout))
 			if err != nil {
 				return
@@ -53,7 +57,7 @@ func (n *network) call(msg []byte, timeout time.Duration) (result []byte, err er
 		var remoteAddr *net.UDPAddr
 		bytesRead, remoteAddr, err = conn.ReadFromUDP(result)
 		if err != nil {
-			if err.(net.Error).Timeout() {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				tries++
 				needNewDeadline = true
 				continue
