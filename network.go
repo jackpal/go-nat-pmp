@@ -13,13 +13,24 @@ const nAT_INITIAL_MS = 250
 // A caller that implements the NAT-PMP RPC protocol.
 type network struct {
 	gateway net.IP
+	local   net.IP
+	port    int
 }
 
 func (n *network) call(msg []byte, timeout time.Duration) (result []byte, err error) {
 	var server net.UDPAddr
 	server.IP = n.gateway
-	server.Port = nAT_PMP_PORT
-	conn, err := net.DialUDP("udp", nil, &server)
+	port := n.port
+	if port == 0 {
+		port = nAT_PMP_PORT
+	}
+	server.Port = port
+
+	var localAddr *net.UDPAddr
+	if len(n.local) > 0 {
+		localAddr = &net.UDPAddr{IP: n.local}
+	}
+	conn, err := net.DialUDP("udp", localAddr, &server)
 	if err != nil {
 		return
 	}
