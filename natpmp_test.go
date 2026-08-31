@@ -323,3 +323,51 @@ func TestProtocolChecks(t *testing.T) {
 		}
 	}
 }
+
+func TestAddPortMappingBounds(t *testing.T) {
+	c := Client{&mockNetwork{t, callRecord{}}, 0}
+
+	boundsCases := []struct {
+		protocol              string
+		internalPort          int
+		requestedExternalPort int
+		lifetime              int
+		expectedErrMsg        string
+	}{
+		{"udp", -1, 1234, 3600, "internalPort -1 out of range (0-65535)"},
+		{"udp", 65536, 1234, 3600, "internalPort 65536 out of range (0-65535)"},
+		{"tcp", 1234, -1, 3600, "requestedExternalPort -1 out of range (0-65535)"},
+		{"tcp", 1234, 70000, 3600, "requestedExternalPort 70000 out of range (0-65535)"},
+		{"tcp", 1234, 1234, -5, "lifetime -5 out of range (0-4294967295 seconds)"},
+	}
+
+	for i, tc := range boundsCases {
+		_, err := c.AddPortMapping(tc.protocol, tc.internalPort, tc.requestedExternalPort, tc.lifetime)
+		if err == nil || err.Error() != tc.expectedErrMsg {
+			t.Errorf("case %d: expected err %q, got %v", i, tc.expectedErrMsg, err)
+		}
+	}
+}
+
+func TestAddPortMappingWithDuration(t *testing.T) {
+	expectedMsg := []uint8{0x0, 0x1, 0x0, 0x0, 0x0, 0x7b, 0x1, 0xc8, 0x0, 0x0, 0x0, 0x3c}
+	expectedResp := []uint8{0x0, 0x81, 0x0, 0x0, 0x0, 0x13, 0xfe, 0xff, 0x0, 0x7b, 0x1, 0xc8, 0x0, 0x0, 0x0, 0x3c}
+	cr := callRecord{expectedMsg, expectedResp, nil}
+
+	c := Client{&mockNetwork{t, cr}, 0}
+
+	// 60 seconds duration
+	res, err := c.AddPortMappingWithDuration("udp", 123, 456, 60*time.Second)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.PortMappingLifetimeInSeconds != 60 {
+		t.Errorf("expected lifetime 60, got %d", res.PortMappingLifetimeInSeconds)
+	}
+
+	// Negative duration check
+	_, err = c.AddPortMappingWithDuration("udp", 123, 456, -1*time.Second)
+	if err == nil {
+		t.Fatalf("expected error for negative duration, got nil")
+	}
+}

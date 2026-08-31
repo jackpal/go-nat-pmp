@@ -86,6 +86,7 @@ type AddPortMappingResult struct {
 }
 
 // Add (or delete) a port mapping. To delete a mapping, set the requestedExternalPort and lifetime to 0.
+// Lifetime is specified in seconds.
 // Note that this call can take up to 128 seconds to return.
 func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternalPort int, lifetime int) (result *AddPortMappingResult, err error) {
 	var opcode byte
@@ -95,6 +96,18 @@ func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternal
 		opcode = 2
 	} else {
 		err = fmt.Errorf("unknown protocol %v", protocol)
+		return
+	}
+	if internalPort < 0 || internalPort > 65535 {
+		err = fmt.Errorf("internalPort %d out of range (0-65535)", internalPort)
+		return
+	}
+	if requestedExternalPort < 0 || requestedExternalPort > 65535 {
+		err = fmt.Errorf("requestedExternalPort %d out of range (0-65535)", requestedExternalPort)
+		return
+	}
+	if lifetime < 0 || int64(lifetime) > 4294967295 {
+		err = fmt.Errorf("lifetime %d out of range (0-4294967295 seconds)", lifetime)
 		return
 	}
 	msg := make([]byte, 12)
@@ -114,6 +127,17 @@ func (n *Client) AddPortMapping(protocol string, internalPort, requestedExternal
 	result.MappedExternalPort = readNetworkOrderUint16(response[10:12])
 	result.PortMappingLifetimeInSeconds = readNetworkOrderUint32(response[12:16])
 	return
+}
+
+// Add (or delete) a port mapping using time.Duration for the lifetime.
+// Note that NAT-PMP specifies lifetimes in seconds, so duration will be truncated to seconds.
+// Note that this call can take up to 128 seconds to return.
+func (n *Client) AddPortMappingWithDuration(protocol string, internalPort, requestedExternalPort int, duration time.Duration) (result *AddPortMappingResult, err error) {
+	if duration < 0 {
+		return nil, fmt.Errorf("duration %v must not be negative", duration)
+	}
+	seconds := int(duration / time.Second)
+	return n.AddPortMapping(protocol, internalPort, requestedExternalPort, seconds)
 }
 
 func (n *Client) rpc(msg []byte, resultSize int) (result []byte, err error) {
